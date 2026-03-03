@@ -94,15 +94,58 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
+        background-color: transparent;
     }
     .stTabs [data-baseweb="tab"] {
-        background-color: #f1f5f9;
+        background-color: #1e293b;
         border-radius: 8px;
-        padding: 10px 20px;
+        padding: 12px 24px;
+        color: #94a3b8 !important;
+        font-weight: 500;
+        border: 1px solid #334155;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #334155;
+        color: #e2e8f0 !important;
     }
     .stTabs [aria-selected="true"] {
         background-color: #667eea !important;
         color: white !important;
+        border: 1px solid #667eea !important;
+    }
+    .arch-container {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin: 1rem 0;
+    }
+    .arch-flow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .arch-block {
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        min-width: 120px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .arch-arrow {
+        color: #64748b;
+        font-size: 1.5rem;
+        padding: 0 0.5rem;
+    }
+    .arch-label {
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+    .arch-sublabel {
+        font-size: 0.75rem;
+        opacity: 0.8;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -453,49 +496,53 @@ with tab2:
 with tab3:
     st.markdown("### Neural Network Architecture")
 
-    # Architecture diagram
-    fig, ax = plt.subplots(figsize=(14, 6))
-    ax.set_xlim(0, 14)
-    ax.set_ylim(0, 8)
+    # Modern HTML-based architecture diagram
+    st.markdown('''
+    <div class="arch-container">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <span style="color: #94a3b8; font-size: 0.9rem;">TCN + Attention Architecture for Motor Intent Classification</span>
+        </div>
+        <div class="arch-flow">
+            <div class="arch-block" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white;">
+                <div class="arch-label">Input</div>
+                <div class="arch-sublabel">64 ch × T samples</div>
+            </div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white;">
+                <div class="arch-label">TCN Encoder</div>
+                <div class="arch-sublabel">Temporal Conv</div>
+            </div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+                <div class="arch-label">Wavelet</div>
+                <div class="arch-sublabel">Multi-scale Decomp</div>
+            </div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block" style="background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white;">
+                <div class="arch-label">Attention</div>
+                <div class="arch-sublabel">8-Head Self-Attn</div>
+            </div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white;">
+                <div class="arch-label">Output</div>
+                <div class="arch-sublabel">4 Motor Classes</div>
+            </div>
+        </div>
 
-    # Layers
-    layers = [
-        (1.5, 4, 'Input\n64 ch × T', '#ff7f0e'),
-        (4, 4, 'TCN\nEncoder', '#2ca02c'),
-        (6.5, 4, 'Wavelet\nDecomp.', '#d62728'),
-        (9, 4, 'Attention\nBlock', '#9467bd'),
-        (11.5, 4, 'Output\n4 classes', '#17becf')
-    ]
-
-    for x, y, label, color in layers:
-        rect = plt.Rectangle((x-0.7, y-0.6), 1.4, 1.2,
-                             facecolor=color, edgecolor='white',
-                             linewidth=2, alpha=0.85, zorder=2)
-        ax.add_patch(rect)
-        ax.text(x, y, label, ha='center', va='center',
-               fontsize=10, fontweight='bold', color='white', zorder=3)
-
-    # Arrows
-    arrow_style = dict(arrowstyle='->', color='#374151', lw=2)
-    for i in range(len(layers)-1):
-        ax.annotate('', xy=(layers[i+1][0]-0.7, layers[i+1][1]),
-                   xytext=(layers[i][0]+0.7, layers[i][1]),
-                   arrowprops=arrow_style)
-
-    # Frequency bands
-    freqs = ['γ 30-100Hz', 'β 13-30Hz', 'α 8-12Hz', 'θ 4-8Hz', 'δ 1-4Hz']
-    for i, f in enumerate(freqs):
-        y = 6.5 - i * 0.7
-        ax.text(6.5, y, f, ha='center', va='center', fontsize=8,
-               bbox=dict(boxstyle='round,pad=0.3', facecolor='#e0e7ff', edgecolor='#667eea'))
-        ax.annotate('', xy=(6.5, 4.6), xytext=(6.5, y-0.2),
-                   arrowprops=dict(arrowstyle='-', color='#9ca3af', lw=1, ls='--'))
-
-    ax.axis('off')
-    ax.set_title('TCN + Attention Architecture for Motor Intent Classification',
-                fontsize=14, fontweight='bold', pad=20)
-    st.pyplot(fig)
-    plt.close()
+        <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 2rem; flex-wrap: wrap;">
+            <div style="text-align: center;">
+                <div style="color: #667eea; font-weight: 600; margin-bottom: 0.5rem;">Frequency Bands</div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
+                    <span style="background: #312e81; color: #a5b4fc; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">δ 1-4Hz</span>
+                    <span style="background: #1e3a5f; color: #7dd3fc; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">θ 4-8Hz</span>
+                    <span style="background: #14532d; color: #86efac; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">α 8-12Hz</span>
+                    <span style="background: #713f12; color: #fde047; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">β 13-30Hz</span>
+                    <span style="background: #7f1d1d; color: #fca5a5; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">γ 30-100Hz</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
 
     # Parameters
     col1, col2 = st.columns(2)
