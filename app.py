@@ -554,9 +554,14 @@ with col4:
 
 # Footer
 st.markdown("""
-<div class="footer">
-    🔗 <a href="https://github.com/yourusername/neural-signal-classification" target="_blank">View on GitHub</a> | 
-    📧 <a href="mailto:your.email@domain.com">Contact</a> | 
-    💼 <a href="https://yourportfolio.com" target="_blank">Portfolio</a>
+---
+<div style="text-align: center; color: #666; padding: 1rem;">
+    <p><strong>Neural Signal Classification for Motor Intent</strong> | Built by Kiran Shay</p>
+    <p>Johns Hopkins University | Neuroscience & Computer Science</p>
+    <p>
+        <a href="https://github.com/kiranshay/neural-signal-classifier-for" target="_blank">GitHub</a> |
+        <a href="https://kiranshay.github.io" target="_blank">Portfolio</a> |
+        <a href="mailto:kiranshay123@gmail.com">Contact</a>
+    </p>
 </div>
 """, unsafe_allow_html=True)
