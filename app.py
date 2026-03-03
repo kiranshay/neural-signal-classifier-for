@@ -496,53 +496,50 @@ with tab2:
 with tab3:
     st.markdown("### Neural Network Architecture")
 
-    # Modern HTML-based architecture diagram
-    st.markdown('''
-    <div class="arch-container">
-        <div style="text-align: center; margin-bottom: 1.5rem;">
-            <span style="color: #94a3b8; font-size: 0.9rem;">TCN + Attention Architecture for Motor Intent Classification</span>
-        </div>
-        <div class="arch-flow">
-            <div class="arch-block" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white;">
-                <div class="arch-label">Input</div>
-                <div class="arch-sublabel">64 ch × T samples</div>
-            </div>
-            <div class="arch-arrow">→</div>
-            <div class="arch-block" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white;">
-                <div class="arch-label">TCN Encoder</div>
-                <div class="arch-sublabel">Temporal Conv</div>
-            </div>
-            <div class="arch-arrow">→</div>
-            <div class="arch-block" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
-                <div class="arch-label">Wavelet</div>
-                <div class="arch-sublabel">Multi-scale Decomp</div>
-            </div>
-            <div class="arch-arrow">→</div>
-            <div class="arch-block" style="background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white;">
-                <div class="arch-label">Attention</div>
-                <div class="arch-sublabel">8-Head Self-Attn</div>
-            </div>
-            <div class="arch-arrow">→</div>
-            <div class="arch-block" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white;">
-                <div class="arch-label">Output</div>
-                <div class="arch-sublabel">4 Motor Classes</div>
-            </div>
-        </div>
-
-        <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 2rem; flex-wrap: wrap;">
-            <div style="text-align: center;">
-                <div style="color: #667eea; font-weight: 600; margin-bottom: 0.5rem;">Frequency Bands</div>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
-                    <span style="background: #312e81; color: #a5b4fc; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">δ 1-4Hz</span>
-                    <span style="background: #1e3a5f; color: #7dd3fc; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">θ 4-8Hz</span>
-                    <span style="background: #14532d; color: #86efac; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">α 8-12Hz</span>
-                    <span style="background: #713f12; color: #fde047; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">β 13-30Hz</span>
-                    <span style="background: #7f1d1d; color: #fca5a5; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">γ 30-100Hz</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    ''', unsafe_allow_html=True)
+    # Architecture flow diagram
+    st.markdown("""<div class="arch-container">
+<div style="text-align: center; margin-bottom: 1.5rem;">
+<span style="color: #94a3b8; font-size: 0.9rem;">TCN + Attention Architecture for Motor Intent Classification</span>
+</div>
+<div class="arch-flow">
+<div class="arch-block" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white;">
+<div class="arch-label">Input</div>
+<div class="arch-sublabel">64 ch × T samples</div>
+</div>
+<div class="arch-arrow">→</div>
+<div class="arch-block" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white;">
+<div class="arch-label">TCN Encoder</div>
+<div class="arch-sublabel">Temporal Conv</div>
+</div>
+<div class="arch-arrow">→</div>
+<div class="arch-block" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+<div class="arch-label">Wavelet</div>
+<div class="arch-sublabel">Multi-scale Decomp</div>
+</div>
+<div class="arch-arrow">→</div>
+<div class="arch-block" style="background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white;">
+<div class="arch-label">Attention</div>
+<div class="arch-sublabel">8-Head Self-Attn</div>
+</div>
+<div class="arch-arrow">→</div>
+<div class="arch-block" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white;">
+<div class="arch-label">Output</div>
+<div class="arch-sublabel">4 Motor Classes</div>
+</div>
+</div>
+<div style="display: flex; justify-content: center; gap: 2rem; margin-top: 2rem; flex-wrap: wrap;">
+<div style="text-align: center;">
+<div style="color: #667eea; font-weight: 600; margin-bottom: 0.5rem;">Frequency Bands</div>
+<div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
+<span style="background: #312e81; color: #a5b4fc; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">δ 1-4Hz</span>
+<span style="background: #1e3a5f; color: #7dd3fc; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">θ 4-8Hz</span>
+<span style="background: #14532d; color: #86efac; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">α 8-12Hz</span>
+<span style="background: #713f12; color: #fde047; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">β 13-30Hz</span>
+<span style="background: #7f1d1d; color: #fca5a5; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;">γ 30-100Hz</span>
+</div>
+</div>
+</div>
+</div>""", unsafe_allow_html=True)
 
     # Parameters
     col1, col2 = st.columns(2)
