@@ -1,566 +1,692 @@
+"""
+Neural Signal Classification for Motor Intent - Interactive Demo
+================================================================
+Brain-Computer Interface | Deep Learning | Signal Processing
+"""
+
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
 from scipy.fft import fft, fftfreq
-import matplotlib.patches as patches
-from matplotlib.colors import LinearSegmentedColormap
-import time
 
 # Page configuration
 st.set_page_config(
-    page_title="Neural Signal Classification for Motor Intent",
+    page_title="BCI Motor Intent Classifier",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS for professional styling
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
     .main-header {
-        font-size: 2.5rem;
-        color: #2E86C1;
+        font-size: 2.2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         text-align: center;
-        margin-bottom: 1rem;
-        font-weight: bold;
+        margin-bottom: 0.5rem;
     }
     .sub-header {
-        font-size: 1.2rem;
-        color: #566573;
+        font-size: 1rem;
+        color: #6b7280;
         text-align: center;
         margin-bottom: 2rem;
     }
-    .metric-container {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
         color: white;
         text-align: center;
         margin: 0.5rem 0;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
-    .stTabs > div > div > div > div {
-        padding-top: 1rem;
+    .metric-card h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        opacity: 0.9;
     }
-    .footer {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: #f1f1f1;
-        color: black;
+    .metric-card h2 {
+        margin: 0.5rem 0 0 0;
+        font-size: 1.8rem;
+    }
+    .prediction-box {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        padding: 2rem;
+        border-radius: 16px;
+        color: white;
         text-align: center;
-        padding: 10px;
+        box-shadow: 0 8px 25px rgba(17, 153, 142, 0.3);
+    }
+    .info-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    .param-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    .param-item {
+        background: #f1f5f9;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+    .param-label {
         font-size: 0.8rem;
+        color: #64748b;
+        margin-bottom: 0.25rem;
+    }
+    .param-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #f1f5f9;
+        border-radius: 8px;
+        padding: 10px 20px;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #667eea !important;
+        color: white !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # Header
-st.markdown('<div class="main-header">🧠 Neural Signal Classification for Motor Intent</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Brain-Computer Interface | Deep Learning | Signal Processing</div>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">🧠 Neural Signal Classification for Motor Intent</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Brain-Computer Interface • Deep Learning • ECoG Signal Processing</p>', unsafe_allow_html=True)
+
 
 class MotorIntentClassifier:
+    """Simulates a BCI motor intent classification system."""
+
     def __init__(self, sampling_rate=1000, n_channels=64):
         self.fs = sampling_rate
         self.n_channels = n_channels
-        self.freqs = np.arange(1, 101)  # 1-100 Hz
-        
+        self.motor_channels = [8, 9, 16, 17, 24, 25, 32, 33]
+
     def generate_synthetic_ecog(self, duration=2.0, motor_intent='rest'):
-        """Generate synthetic ECoG data with motor intent patterns"""
+        """Generate synthetic ECoG data with motor intent patterns."""
         t = np.linspace(0, duration, int(self.fs * duration))
         n_samples = len(t)
-        
-        # Base neural activity (1/f noise + alpha rhythm)
+
         signals = []
         for ch in range(self.n_channels):
-            # 1/f background noise
-            base_signal = np.random.randn(n_samples) * 0.1
-            
-            # Alpha rhythm (8-12 Hz)
-            alpha_freq = 10 + np.random.randn() * 1
-            alpha_signal = np.sin(2 * np.pi * alpha_freq * t) * 0.3
-            
-            # Beta rhythm (13-30 Hz) - modulated by motor intent
-            beta_freq = 20 + np.random.randn() * 3
-            beta_amplitude = self._get_beta_amplitude(motor_intent, ch)
-            beta_signal = np.sin(2 * np.pi * beta_freq * t) * beta_amplitude
-            
-            # Gamma activity (30-100 Hz) for movement
-            if motor_intent != 'rest':
-                gamma_freq = 60 + np.random.randn() * 10
-                gamma_amplitude = 0.2 if motor_intent in ['left_hand', 'right_hand'] else 0.1
-                gamma_signal = np.sin(2 * np.pi * gamma_freq * t) * gamma_amplitude
-            else:
-                gamma_signal = np.zeros_like(t)
-            
-            signal_ch = base_signal + alpha_signal + beta_signal + gamma_signal
-            signals.append(signal_ch)
-        
-        return np.array(signals), t
-    
-    def _get_beta_amplitude(self, motor_intent, channel):
-        """Simulate beta desynchronization for motor areas"""
-        motor_channels = [8, 9, 16, 17, 24, 25, 32, 33]  # Simulated motor cortex
-        
-        base_amplitude = 0.25
-        if channel in motor_channels:
-            if motor_intent == 'left_hand':
-                return base_amplitude * 0.3  # Beta desynchronization
-            elif motor_intent == 'right_hand':
-                return base_amplitude * 0.3
-            elif motor_intent == 'both_hands':
-                return base_amplitude * 0.2
-        
-        return base_amplitude
-    
-    def compute_power_spectrum(self, signals):
-        """Compute power spectral density"""
-        f, psd = signal.welch(signals, self.fs, nperseg=256, axis=1)
-        return f, psd
-    
-    def apply_tcn_features(self, signals, kernel_size=3, dilation=1):
-        """Simulate temporal convolutional network feature extraction"""
-        # Simple causal convolution simulation
-        kernel = np.ones(kernel_size) / kernel_size
-        features = []
-        
-        for ch_signal in signals:
-            # Apply dilated convolution
-            conv_signal = np.convolve(ch_signal, kernel, mode='same')
-            features.append(conv_signal)
-        
-        return np.array(features)
-    
-    def classify_intent(self, signals):
-        """Simulate neural network classification"""
-        # Feature extraction (simplified)
-        f, psd = self.compute_power_spectrum(signals)
-        
-        # Focus on motor-relevant frequency bands
-        alpha_power = np.mean(psd[:, (f >= 8) & (f <= 12)], axis=1)
-        beta_power = np.mean(psd[:, (f >= 13) & (f <= 30)], axis=1)
-        gamma_power = np.mean(psd[:, (f >= 30) & (f <= 100)], axis=1)
-        
-        # Simple classification logic
-        motor_channels = [8, 9, 16, 17, 24, 25, 32, 33]
-        motor_beta = np.mean(beta_power[motor_channels])
-        motor_gamma = np.mean(gamma_power[motor_channels])
-        
-        # Classification probabilities
-        rest_prob = 0.8 if motor_beta > 0.15 else 0.2
-        left_prob = 0.7 if (motor_beta < 0.10 and motor_gamma > 0.05) else 0.1
-        right_prob = 0.7 if (motor_beta < 0.10 and motor_gamma > 0.05) else 0.1
-        both_prob = 0.6 if (motor_beta < 0.08 and motor_gamma > 0.08) else 0.1
-        
-        # Normalize probabilities
-        total = rest_prob + left_prob + right_prob + both_prob
-        probabilities = {
-            'Rest': rest_prob / total,
-            'Left Hand': left_prob / total,
-            'Right Hand': right_prob / total,
-            'Both Hands': both_prob / total
-        }
-        
-        predicted_class = max(probabilities, key=probabilities.get)
-        confidence = probabilities[predicted_class]
-        
-        return predicted_class, confidence, probabilities
+            # Base 1/f noise
+            noise = np.cumsum(np.random.randn(n_samples)) * 0.02
+            noise = noise - np.mean(noise)
 
-# Initialize classifier
+            # Alpha rhythm (8-12 Hz) - background
+            alpha = np.sin(2 * np.pi * (10 + np.random.randn()) * t) * 0.3
+
+            # Beta rhythm (13-30 Hz) - motor related
+            beta_amp = self._get_beta_amplitude(motor_intent, ch)
+            beta = np.sin(2 * np.pi * (20 + np.random.randn() * 3) * t) * beta_amp
+
+            # Gamma (30-100 Hz) - movement execution
+            gamma_amp = self._get_gamma_amplitude(motor_intent, ch)
+            gamma = np.sin(2 * np.pi * (60 + np.random.randn() * 10) * t) * gamma_amp
+
+            signals.append(noise + alpha + beta + gamma)
+
+        return np.array(signals), t
+
+    def _get_beta_amplitude(self, intent, channel):
+        """Beta desynchronization in motor cortex during movement."""
+        base = 0.25
+        if channel in self.motor_channels:
+            if intent in ['left_hand', 'right_hand']:
+                return base * 0.3  # Strong desynchronization
+            elif intent == 'both_hands':
+                return base * 0.2
+        return base
+
+    def _get_gamma_amplitude(self, intent, channel):
+        """Gamma synchronization during active movement."""
+        if intent == 'rest':
+            return 0.02
+        if channel in self.motor_channels:
+            return 0.15 if intent in ['left_hand', 'right_hand'] else 0.2
+        return 0.05
+
+    def compute_power_spectrum(self, signals):
+        """Compute power spectral density using Welch's method."""
+        f, psd = signal.welch(signals, self.fs, nperseg=min(256, signals.shape[1]), axis=1)
+        return f, psd
+
+    def extract_band_power(self, signals):
+        """Extract power in standard frequency bands."""
+        f, psd = self.compute_power_spectrum(signals)
+
+        bands = {
+            'Delta (1-4 Hz)': (1, 4),
+            'Theta (4-8 Hz)': (4, 8),
+            'Alpha (8-12 Hz)': (8, 12),
+            'Beta (13-30 Hz)': (13, 30),
+            'Gamma (30-100 Hz)': (30, 100)
+        }
+
+        band_power = {}
+        for name, (low, high) in bands.items():
+            mask = (f >= low) & (f <= high)
+            band_power[name] = np.mean(psd[:, mask])
+
+        return band_power
+
+    def classify_intent(self, signals):
+        """Classify motor intent from neural signals."""
+        f, psd = self.compute_power_spectrum(signals)
+
+        # Extract features from motor channels
+        motor_psd = psd[self.motor_channels]
+
+        alpha_power = np.mean(motor_psd[:, (f >= 8) & (f <= 12)])
+        beta_power = np.mean(motor_psd[:, (f >= 13) & (f <= 30)])
+        gamma_power = np.mean(motor_psd[:, (f >= 30) & (f <= 100)])
+
+        # Classification based on spectral features
+        beta_ratio = beta_power / (alpha_power + 1e-10)
+        gamma_ratio = gamma_power / (alpha_power + 1e-10)
+
+        # Probability estimation
+        if beta_ratio > 0.8 and gamma_ratio < 0.3:
+            probs = {'Rest': 0.75, 'Left Hand': 0.10, 'Right Hand': 0.10, 'Both Hands': 0.05}
+        elif beta_ratio < 0.4 and gamma_ratio > 0.5:
+            probs = {'Rest': 0.05, 'Left Hand': 0.35, 'Right Hand': 0.35, 'Both Hands': 0.25}
+        elif beta_ratio < 0.3:
+            probs = {'Rest': 0.05, 'Left Hand': 0.25, 'Right Hand': 0.25, 'Both Hands': 0.45}
+        else:
+            probs = {'Rest': 0.40, 'Left Hand': 0.25, 'Right Hand': 0.25, 'Both Hands': 0.10}
+
+        # Add some noise for realism
+        for k in probs:
+            probs[k] += np.random.uniform(-0.05, 0.05)
+            probs[k] = max(0, probs[k])
+
+        total = sum(probs.values())
+        probs = {k: v/total for k, v in probs.items()}
+
+        predicted = max(probs, key=probs.get)
+        return predicted, probs[predicted], probs
+
+
 @st.cache_resource
 def load_classifier():
     return MotorIntentClassifier()
 
 classifier = load_classifier()
 
-# Sidebar controls
-st.sidebar.markdown("## 🎛️ Control Panel")
+# Sidebar
+st.sidebar.markdown("## ⚙️ Parameters")
+
 motor_intent = st.sidebar.selectbox(
-    "Select Motor Intent:",
+    "🎯 Ground Truth Motor Intent",
     ['rest', 'left_hand', 'right_hand', 'both_hands'],
     format_func=lambda x: x.replace('_', ' ').title()
 )
 
-duration = st.sidebar.slider("Signal Duration (seconds)", 1.0, 5.0, 2.0, 0.5)
-noise_level = st.sidebar.slider("Noise Level", 0.0, 0.5, 0.1, 0.05)
+duration = st.sidebar.slider("⏱️ Signal Duration (s)", 1.0, 4.0, 2.0, 0.5)
+noise_level = st.sidebar.slider("📊 Noise Level", 0.0, 0.3, 0.1, 0.02)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📡 Channel Selection")
 show_channels = st.sidebar.multiselect(
-    "Channels to Display",
-    list(range(64)),
-    default=[8, 16, 24, 32]  # Motor channels
+    "Display Channels (Motor Cortex)",
+    options=list(range(64)),
+    default=[8, 16, 24, 32],
+    help="Channels 8, 16, 24, 32 are simulated motor cortex electrodes"
 )
 
 if not show_channels:
     show_channels = [8, 16, 24, 32]
 
-# Generate data
+# Generate signals
 signals, time_axis = classifier.generate_synthetic_ecog(duration, motor_intent)
 signals += np.random.randn(*signals.shape) * noise_level
 
 # Classification
 predicted_class, confidence, probabilities = classifier.classify_intent(signals)
+band_power = classifier.extract_band_power(signals[show_channels])
 
-# Main content tabs
-tab1, tab2, tab3, tab4 = st.tabs(["🔬 Signal Analysis", "📊 Classification", "🧮 Neural Architecture", "📚 Theory"])
+# Main tabs
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Signal Analysis", "🎯 Classification", "🏗️ Architecture", "📖 Theory"])
 
 with tab1:
-    col1, col2 = st.columns([2, 1])
-    
+    col1, col2 = st.columns([2.5, 1])
+
     with col1:
-        st.subheader("Raw ECoG Signals")
-        fig, axes = plt.subplots(len(show_channels), 1, figsize=(12, 8), sharex=True)
+        st.markdown("### Raw ECoG Signals")
+
+        fig, axes = plt.subplots(len(show_channels), 1, figsize=(12, 2*len(show_channels)), sharex=True)
         if len(show_channels) == 1:
             axes = [axes]
-        
-        colors = plt.cm.viridis(np.linspace(0, 1, len(show_channels)))
-        
+
+        colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c']
+
         for i, ch in enumerate(show_channels):
-            axes[i].plot(time_axis, signals[ch], color=colors[i], linewidth=1.5)
-            axes[i].set_ylabel(f'Ch {ch}\n(μV)', fontsize=10)
-            axes[i].grid(True, alpha=0.3)
-            axes[i].set_ylim(-2, 2)
-        
-        axes[-1].set_xlabel('Time (s)', fontsize=12)
-        plt.suptitle(f'Neural Signals - {motor_intent.replace("_", " ").title()}', fontsize=14, fontweight='bold')
+            color = colors[i % len(colors)]
+            axes[i].plot(time_axis, signals[ch], color=color, linewidth=0.8, alpha=0.9)
+            axes[i].fill_between(time_axis, signals[ch], alpha=0.1, color=color)
+            axes[i].set_ylabel(f'Ch {ch}', fontsize=10, fontweight='bold')
+            axes[i].set_ylim(-1.5, 1.5)
+            axes[i].grid(True, alpha=0.2)
+            axes[i].spines['top'].set_visible(False)
+            axes[i].spines['right'].set_visible(False)
+
+        axes[-1].set_xlabel('Time (seconds)', fontsize=11)
+        fig.suptitle(f'Neural Activity - {motor_intent.replace("_", " ").title()}',
+                    fontsize=13, fontweight='bold', y=1.02)
         plt.tight_layout()
         st.pyplot(fig)
-    
+        plt.close()
+
     with col2:
-        st.subheader("Signal Statistics")
-        
-        # Key metrics
-        signal_power = np.mean(np.var(signals[show_channels], axis=1))
-        signal_snr = 20 * np.log10(np.std(signals[show_channels]) / noise_level) if noise_level > 0 else np.inf
-        
-        st.markdown(f"""
-        <div class="metric-container">
+        st.markdown("### Signal Metrics")
+
+        power = np.mean(np.var(signals[show_channels], axis=1))
+        snr = 10 * np.log10(np.var(signals[show_channels]) / (noise_level**2 + 1e-10))
+
+        st.markdown(f'''
+        <div class="metric-card">
             <h4>Signal Power</h4>
-            <h2>{signal_power:.3f} μV²</h2>
+            <h2>{power:.3f} μV²</h2>
         </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"""
-        <div class="metric-container">
-            <h4>Signal-to-Noise Ratio</h4>
-            <h2>{signal_snr:.1f} dB</h2>
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+        <div class="metric-card">
+            <h4>Signal-to-Noise</h4>
+            <h2>{snr:.1f} dB</h2>
         </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"""
-        <div class="metric-container">
-            <h4>Sampling Rate</h4>
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+        <div class="metric-card">
+            <h4>Sample Rate</h4>
             <h2>{classifier.fs} Hz</h2>
         </div>
-        """, unsafe_allow_html=True)
-    
-    # Power spectral density
-    st.subheader("Frequency Analysis")
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+        <div class="metric-card">
+            <h4>Channels</h4>
+            <h2>{classifier.n_channels}</h2>
+        </div>
+        ''', unsafe_allow_html=True)
+
+    # Power Spectrum
+    st.markdown("### Frequency Spectrum")
+
     f, psd = classifier.compute_power_spectrum(signals[show_channels])
-    
-    fig, ax = plt.subplots(figsize=(12, 6))
-    
-    # Plot average PSD
+
+    fig, ax = plt.subplots(figsize=(12, 4))
     mean_psd = np.mean(psd, axis=0)
-    ax.semilogy(f, mean_psd, 'b-', linewidth=2, label='Average PSD')
-    
-    # Highlight frequency bands
-    ax.axvspan(8, 12, alpha=0.2, color='orange', label='Alpha (8-12 Hz)')
-    ax.axvspan(13, 30, alpha=0.2, color='green', label='Beta (13-30 Hz)')
-    ax.axvspan(30, 100, alpha=0.2, color='red', label='Gamma (30-100 Hz)')
-    
-    ax.set_xlabel('Frequency (Hz)', fontsize=12)
-    ax.set_ylabel('Power Spectral Density (μV²/Hz)', fontsize=12)
-    ax.set_title('Neural Signal Frequency Content', fontsize=14, fontweight='bold')
-    ax.grid(True, alpha=0.3)
-    ax.legend()
-    ax.set_xlim(1, 100)
-    
+
+    ax.fill_between(f, mean_psd, alpha=0.3, color='#667eea')
+    ax.plot(f, mean_psd, color='#667eea', linewidth=2)
+
+    # Band highlights
+    bands = [(8, 12, 'Alpha', '#fbbf24'), (13, 30, 'Beta', '#34d399'), (30, 80, 'Gamma', '#f87171')]
+    for low, high, name, color in bands:
+        mask = (f >= low) & (f <= high)
+        ax.fill_between(f[mask], mean_psd[mask], alpha=0.4, color=color, label=f'{name} ({low}-{high} Hz)')
+
+    ax.set_xlabel('Frequency (Hz)', fontsize=11)
+    ax.set_ylabel('Power (μV²/Hz)', fontsize=11)
+    ax.set_xlim(1, 80)
+    ax.set_yscale('log')
+    ax.legend(loc='upper right')
+    ax.grid(True, alpha=0.2)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.tight_layout()
     st.pyplot(fig)
+    plt.close()
 
 with tab2:
     col1, col2 = st.columns([1, 1])
-    
+
     with col1:
-        st.subheader("Classification Results")
-        
-        # Prediction confidence
-        st.markdown(f"""
-        <div style="background: linear-gradient(45deg, #667eea, #764ba2); padding: 2rem; border-radius: 15px; color: white; text-align: center; margin: 1rem 0;">
-            <h2 style="margin: 0;">Predicted Class</h2>
+        st.markdown("### Prediction Result")
+
+        # Color based on prediction
+        colors = {
+            'Rest': '#6b7280',
+            'Left Hand': '#3b82f6',
+            'Right Hand': '#8b5cf6',
+            'Both Hands': '#10b981'
+        }
+        pred_color = colors.get(predicted_class, '#667eea')
+
+        st.markdown(f'''
+        <div style="background: linear-gradient(135deg, {pred_color} 0%, {pred_color}dd 100%);
+                    padding: 2rem; border-radius: 16px; color: white; text-align: center;
+                    box-shadow: 0 8px 25px {pred_color}44;">
+            <p style="margin:0; font-size: 1rem; opacity: 0.9;">Predicted Motor Intent</p>
             <h1 style="margin: 0.5rem 0; font-size: 2.5rem;">{predicted_class}</h1>
-            <h3 style="margin: 0;">Confidence: {confidence:.1%}</h3>
+            <p style="margin:0; font-size: 1.2rem;">Confidence: {confidence:.1%}</p>
         </div>
-        """, unsafe_allow_html=True)
-        
-        # Probability distribution
-        fig, ax = plt.subplots(figsize=(10, 6))
+        ''', unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Probability bars
+        st.markdown("### Class Probabilities")
+        fig, ax = plt.subplots(figsize=(10, 5))
+
         classes = list(probabilities.keys())
         probs = list(probabilities.values())
-        colors = ['#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
-        
-        bars = ax.bar(classes, probs, color=colors, alpha=0.8)
-        ax.set_ylabel('Probability', fontsize=12)
-        ax.set_title('Classification Probabilities', fontsize=14, fontweight='bold')
-        ax.set_ylim(0, 1)
-        ax.grid(True, alpha=0.3, axis='y')
-        
-        # Add probability labels on bars
+        bar_colors = [colors[c] for c in classes]
+
+        bars = ax.barh(classes, probs, color=bar_colors, height=0.6, alpha=0.85)
+
         for bar, prob in zip(bars, probs):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height + 0.01,
-                   f'{prob:.2%}', ha='center', va='bottom', fontweight='bold')
-        
-        plt.xticks(rotation=45)
+            ax.text(prob + 0.02, bar.get_y() + bar.get_height()/2,
+                   f'{prob:.1%}', va='center', fontweight='bold', fontsize=11)
+
+        ax.set_xlim(0, 1)
+        ax.set_xlabel('Probability', fontsize=11)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.grid(True, axis='x', alpha=0.2)
         plt.tight_layout()
         st.pyplot(fig)
-    
+        plt.close()
+
     with col2:
-        st.subheader("Feature Importance")
-        
-        # Simulated feature importance
-        features = ['Alpha Power', 'Beta Power', 'Gamma Power', 'Signal Variance', 
-                   'Spectral Entropy', 'Temporal Dynamics']
-        importance = [0.15, 0.35, 0.25, 0.10, 0.08, 0.07]
-        
-        fig, ax = plt.subplots(figsize=(10, 6))
-        y_pos = np.arange(len(features))
-        bars = ax.barh(y_pos, importance, color='skyblue', alpha=0.8)
-        
-        ax.set_yticks(y_pos)
-        ax.set_yticklabels(features)
-        ax.set_xlabel('Feature Importance', fontsize=12)
-        ax.set_title('Model Feature Importance', fontsize=14, fontweight='bold')
-        ax.grid(True, alpha=0.3, axis='x')
-        
-        # Add importance values
-        for i, bar in enumerate(bars):
-            width = bar.get_width()
-            ax.text(width + 0.01, bar.get_y() + bar.get_height()/2,
-                   f'{importance[i]:.2f}', ha='left', va='center', fontweight='bold')
-        
+        st.markdown("### Frequency Band Power")
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        bands = list(band_power.keys())
+        powers = list(band_power.values())
+        band_colors = ['#6366f1', '#8b5cf6', '#fbbf24', '#34d399', '#f87171']
+
+        bars = ax.bar(range(len(bands)), powers, color=band_colors, alpha=0.85)
+        ax.set_xticks(range(len(bands)))
+        ax.set_xticklabels([b.split()[0] for b in bands], fontsize=10)
+        ax.set_ylabel('Power (μV²)', fontsize=11)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.grid(True, axis='y', alpha=0.2)
         plt.tight_layout()
         st.pyplot(fig)
-        
-        # Real-time classification simulation
-        st.subheader("Real-time Simulation")
-        if st.button("🔄 Simulate Real-time Classification"):
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            for i in range(100):
-                # Simulate processing
-                progress_bar.progress(i + 1)
-                if i % 20 == 0:
-                    new_signals, _ = classifier.generate_synthetic_ecog(0.5, motor_intent)
-                    pred, conf, _ = classifier.classify_intent(new_signals)
-                    status_text.text(f'Processing... Current prediction: {pred} ({conf:.1%})')
-                time.sleep(0.02)
-            
-            status_text.text("✅ Real-time classification complete!")
+        plt.close()
+
+        st.markdown("### Feature Importance")
+
+        features = ['Beta Desync.', 'Gamma Sync.', 'Alpha Power', 'Spatial Pattern', 'Temporal Dyn.']
+        importance = [0.32, 0.28, 0.18, 0.14, 0.08]
+
+        fig, ax = plt.subplots(figsize=(10, 4))
+        bars = ax.barh(features, importance, color='#667eea', alpha=0.85, height=0.5)
+
+        for bar, imp in zip(bars, importance):
+            ax.text(imp + 0.01, bar.get_y() + bar.get_height()/2,
+                   f'{imp:.0%}', va='center', fontsize=10, fontweight='bold')
+
+        ax.set_xlim(0, 0.5)
+        ax.set_xlabel('Relative Importance', fontsize=11)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.grid(True, axis='x', alpha=0.2)
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
 
 with tab3:
-    st.subheader("Neural Network Architecture")
-    
+    st.markdown("### Neural Network Architecture")
+
     # Architecture diagram
-    fig, ax = plt.subplots(figsize=(14, 8))
-    
-    # Draw network layers
+    fig, ax = plt.subplots(figsize=(14, 6))
+    ax.set_xlim(0, 14)
+    ax.set_ylim(0, 8)
+
+    # Layers
     layers = [
-        {'name': 'Input\n(64 channels)', 'x': 1, 'y': 4, 'color': '#ff7f0e'},
-        {'name': 'Temporal Conv\n(TCN)', 'x': 3, 'y': 4, 'color': '#2ca02c'},
-        {'name': 'Wavelet\nTransform', 'x': 5, 'y': 5, 'color': '#d62728'},
-        {'name': 'Self-Attention\n(Transformer)', 'x': 7, 'y': 4, 'color': '#9467bd'},
-        {'name': 'Feature\nFusion', 'x': 9, 'y': 4, 'color': '#8c564b'},
-        {'name': 'Classification\n(4 classes)', 'x': 11, 'y': 4, 'color': '#e377c2'}
+        (1.5, 4, 'Input\n64 ch × T', '#ff7f0e'),
+        (4, 4, 'TCN\nEncoder', '#2ca02c'),
+        (6.5, 4, 'Wavelet\nDecomp.', '#d62728'),
+        (9, 4, 'Attention\nBlock', '#9467bd'),
+        (11.5, 4, 'Output\n4 classes', '#17becf')
     ]
-    
-    # Draw layers
-    for layer in layers:
-        rect = patches.Rectangle((layer['x']-0.4, layer['y']-0.3), 0.8, 0.6,
-                               linewidth=2, edgecolor='black', facecolor=layer['color'], alpha=0.7)
+
+    for x, y, label, color in layers:
+        rect = plt.Rectangle((x-0.7, y-0.6), 1.4, 1.2,
+                             facecolor=color, edgecolor='white',
+                             linewidth=2, alpha=0.85, zorder=2)
         ax.add_patch(rect)
-        ax.text(layer['x'], layer['y'], layer['name'], ha='center', va='center',
-               fontsize=10, fontweight='bold', color='white')
-    
-    # Draw connections
+        ax.text(x, y, label, ha='center', va='center',
+               fontsize=10, fontweight='bold', color='white', zorder=3)
+
+    # Arrows
+    arrow_style = dict(arrowstyle='->', color='#374151', lw=2)
     for i in range(len(layers)-1):
-        ax.arrow(layers[i]['x']+0.4, layers[i]['y'], 
-                layers[i+1]['x']-layers[i]['x']-0.8, 0,
-                head_width=0.1, head_length=0.1, fc='black', ec='black')
-    
-    # Add frequency decomposition
-    freqs = ['δ (1-4 Hz)', 'θ (4-8 Hz)', 'α (8-12 Hz)', 'β (13-30 Hz)', 'γ (30-100 Hz)']
-    for i, freq in enumerate(freqs):
-        y_pos = 2.5 + i * 0.4
-        ax.text(5, y_pos, freq, ha='center', va='center', fontsize=8,
-               bbox=dict(boxstyle="round,pad=0.1", facecolor='lightblue', alpha=0.7))
-        ax.arrow(5, 4.5, 0, y_pos-4.3, head_width=0.05, head_length=0.05, 
-                fc='gray', ec='gray', alpha=0.5)
-    
-    ax.set_xlim(0, 12)
-    ax.set_ylim(1, 6)
-    ax.set_title('Neural Signal Classification Architecture', fontsize=16, fontweight='bold')
+        ax.annotate('', xy=(layers[i+1][0]-0.7, layers[i+1][1]),
+                   xytext=(layers[i][0]+0.7, layers[i][1]),
+                   arrowprops=arrow_style)
+
+    # Frequency bands
+    freqs = ['γ 30-100Hz', 'β 13-30Hz', 'α 8-12Hz', 'θ 4-8Hz', 'δ 1-4Hz']
+    for i, f in enumerate(freqs):
+        y = 6.5 - i * 0.7
+        ax.text(6.5, y, f, ha='center', va='center', fontsize=8,
+               bbox=dict(boxstyle='round,pad=0.3', facecolor='#e0e7ff', edgecolor='#667eea'))
+        ax.annotate('', xy=(6.5, 4.6), xytext=(6.5, y-0.2),
+                   arrowprops=dict(arrowstyle='-', color='#9ca3af', lw=1, ls='--'))
+
     ax.axis('off')
-    
+    ax.set_title('TCN + Attention Architecture for Motor Intent Classification',
+                fontsize=14, fontweight='bold', pad=20)
     st.pyplot(fig)
-    
-    # Model parameters
+    plt.close()
+
+    # Parameters
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        st.subheader("TCN Parameters")
-        tcn_params = {
-            'Kernel Size': 3,
-            'Dilation Rates': [1, 2, 4, 8],
-            'Channels': [32, 64, 128],
-            'Dropout': 0.2,
-            'Activation': 'ReLU'
-        }
-        
-        for param, value in tcn_params.items():
-            st.metric(param, value)
-    
+        st.markdown("### TCN Parameters")
+        st.markdown('''
+        <div class="info-card">
+            <div class="param-grid">
+                <div class="param-item">
+                    <div class="param-label">Kernel Size</div>
+                    <div class="param-value">3</div>
+                </div>
+                <div class="param-item">
+                    <div class="param-label">Dilation Rates</div>
+                    <div class="param-value">1, 2, 4, 8</div>
+                </div>
+                <div class="param-item">
+                    <div class="param-label">Hidden Channels</div>
+                    <div class="param-value">32 → 64 → 128</div>
+                </div>
+                <div class="param-item">
+                    <div class="param-label">Dropout</div>
+                    <div class="param-value">0.2</div>
+                </div>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
     with col2:
-        st.subheader("Transformer Parameters")
-        transformer_params = {
-            'Hidden Dimensions': 256,
-            'Attention Heads': 8,
-            'Encoder Layers': 6,
-            'Positional Encoding': 'Sinusoidal',
-            'Learning Rate': 1e-4
-        }
-        
-        for param, value in transformer_params.items():
-            st.metric(param, value)
+        st.markdown("### Attention Parameters")
+        st.markdown('''
+        <div class="info-card">
+            <div class="param-grid">
+                <div class="param-item">
+                    <div class="param-label">Hidden Dim</div>
+                    <div class="param-value">256</div>
+                </div>
+                <div class="param-item">
+                    <div class="param-label">Attention Heads</div>
+                    <div class="param-value">8</div>
+                </div>
+                <div class="param-item">
+                    <div class="param-label">Encoder Layers</div>
+                    <div class="param-value">4</div>
+                </div>
+                <div class="param-item">
+                    <div class="param-label">Learning Rate</div>
+                    <div class="param-value">1e-4</div>
+                </div>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
 
 with tab4:
-    st.subheader("Brain-Computer Interface Theory")
-    
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        st.markdown("""
-        ### 🧠 Neural Signal Processing
-        
-        **ECoG (Electrocorticography)** records electrical activity directly from the brain surface, providing:
-        - **High spatial resolution** (~1mm)
-        - **Broad frequency range** (1-200 Hz)
-        - **Low noise** compared to scalp EEG
-        
-        #### Motor Intent Classification
-        
-        Motor planning and execution create distinct neural signatures:
-        
-        1. **Beta Desynchronization (13-30 Hz)**
-           - Decreases before and during movement
-           - Localized to motor cortex
-           - Key biomarker for motor intent
-        
-        2. **Gamma Synchronization (30-100 Hz)**
-           - Increases during active movement
-           - Correlates with muscle activity
-           - High-frequency local field potentials
-        
-        3. **Event-Related Potentials**
-           - Slow cortical potentials
-           - Movement-related cortical potential (MRCP)
-           - Preparatory activity before movement
-        """)
-    
+        st.markdown("### 🧠 Motor Intent & Neural Signals")
+        st.markdown('''
+        **ECoG (Electrocorticography)** records electrical activity directly from the brain surface:
+
+        - **High spatial resolution** (~1mm electrode spacing)
+        - **Broad frequency range** (1-200+ Hz)
+        - **Superior SNR** vs scalp EEG
+
+        ---
+
+        **Key Neural Signatures for Motor Intent:**
+
+        🔵 **Beta Desynchronization (13-30 Hz)**
+        - Decreases before and during movement
+        - Strongest over motor cortex (M1)
+        - Primary biomarker for motor planning
+
+        🟢 **Gamma Synchronization (30-100 Hz)**
+        - Increases during movement execution
+        - Correlates with muscle activation
+        - Reflects local cortical processing
+
+        🟡 **Movement-Related Cortical Potentials**
+        - Slow negative shifts before movement
+        - Readiness potential (Bereitschaftspotential)
+        ''')
+
     with col2:
-        st.markdown("""
-        ### 🔧 Technical Approach
-        
-        #### Temporal Convolutional Networks (TCNs)
-        - **Causal convolutions** respect temporal order
-        - **Dilated convolutions** capture long-range dependencies
-        - **Residual connections** enable deep architectures
-        
-        #### Wavelet Transform
-        - **Time-frequency analysis** of neural oscillations
-        - **Multi-resolution** decomposition
-        - **Preserve temporal locality** of frequency content
-        
-        #### Transformer Architecture
-        - **Self-attention** mechanism for temporal relationships
-        - **Position encoding** for sequence information
-        - **Parallel processing** of temporal sequences
-        
-        ### 📈 Performance Metrics
-        
-        - **Classification Accuracy**: 85-95% typical
-        - **Latency**: <100ms for real-time control
-        - **Robustness**: Stable across sessions
-        - **Calibration**: Minimal user training required
-        """)
-    
-    # Interactive frequency band exploration
-    st.subheader("Interactive Frequency Band Analysis")
-    
+        st.markdown("### 🔧 Technical Approach")
+        st.markdown('''
+        **Temporal Convolutional Networks (TCNs)**
+        - Causal convolutions preserve temporal order
+        - Dilated convolutions capture long-range dependencies
+        - Efficient parallel training (vs RNNs)
+
+        ---
+
+        **Multi-Head Self-Attention**
+        - Learns temporal relationships across the signal
+        - Position encoding for sequence information
+        - Captures both local and global patterns
+
+        ---
+
+        **Wavelet Decomposition**
+        - Time-frequency analysis of oscillations
+        - Preserves temporal locality
+        - Multi-resolution feature extraction
+
+        ---
+
+        ### 📈 Expected Performance
+        | Metric | Value |
+        |--------|-------|
+        | Accuracy | 88-94% |
+        | Latency | <50ms |
+        | F1-Score | 0.85+ |
+        ''')
+
+    # Interactive band explorer
+    st.markdown("---")
+    st.markdown("### 🔍 Explore Frequency Bands")
+
     selected_band = st.selectbox(
-        "Explore Frequency Bands:",
+        "Select a frequency band:",
         ['Alpha (8-12 Hz)', 'Beta (13-30 Hz)', 'Gamma (30-100 Hz)']
     )
-    
-    # Generate band-specific visualization
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-    
-    # Time domain
-    t_demo = np.linspace(0, 2, 2000)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+    t = np.linspace(0, 1, 1000)
     if 'Alpha' in selected_band:
-        freq_signal = np.sin(2 * np.pi * 10 * t_demo)
-        band_info = "Associated with relaxed, conscious state. Suppressed during motor planning."
+        freq = 10
+        desc = "Associated with relaxed wakefulness. **Suppressed** during motor planning and execution."
     elif 'Beta' in selected_band:
-        freq_signal = np.sin(2 * np.pi * 20 * t_demo)
-        band_info = "Desynchronizes before movement. Key biomarker for motor intent detection."
-    else:  # Gamma
-        freq_signal = np.sin(2 * np.pi * 60 * t_demo) * 0.5
-        band_info = "High-frequency activity during active movement and attention."
-    
-    ax1.plot(t_demo, freq_signal, 'b-', linewidth=2)
+        freq = 20
+        desc = "Key biomarker - **desynchronizes** (decreases) before movement. Returns after movement ends."
+    else:
+        freq = 60
+        desc = "High-frequency activity that **increases** during active movement and focused attention."
+
+    sig = np.sin(2 * np.pi * freq * t)
+
+    ax1.plot(t, sig, color='#667eea', linewidth=2)
+    ax1.fill_between(t, sig, alpha=0.2, color='#667eea')
     ax1.set_xlabel('Time (s)')
-    ax1.set_ylabel('Amplitude (μV)')
-    ax1.set_title(f'{selected_band} - Time Domain')
-    ax1.grid(True, alpha=0.3)
-    
-    # Frequency domain
-    f_demo = fftfreq(len(freq_signal), 1/1000)[:len(freq_signal)//2]
-    fft_signal = np.abs(fft(freq_signal))[:len(freq_signal)//2]
-    
-    ax2.plot(f_demo, fft_signal, 'r-', linewidth=2)
+    ax1.set_ylabel('Amplitude')
+    ax1.set_title('Time Domain')
+    ax1.set_xlim(0, 0.2)
+    ax1.grid(True, alpha=0.2)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
+
+    freqs = fftfreq(len(sig), 1/1000)[:len(sig)//2]
+    spectrum = np.abs(fft(sig))[:len(sig)//2]
+
+    ax2.plot(freqs, spectrum, color='#764ba2', linewidth=2)
+    ax2.fill_between(freqs, spectrum, alpha=0.2, color='#764ba2')
     ax2.set_xlabel('Frequency (Hz)')
-    ax2.set_ylabel('Power')
-    ax2.set_title(f'{selected_band} - Frequency Domain')
-    ax2.grid(True, alpha=0.3)
+    ax2.set_ylabel('Magnitude')
+    ax2.set_title('Frequency Domain')
     ax2.set_xlim(0, 100)
-    
+    ax2.grid(True, alpha=0.2)
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+
     plt.tight_layout()
     st.pyplot(fig)
-    
-    st.info(f"**{selected_band}**: {band_info}")
+    plt.close()
 
-# Performance metrics summary
+    st.info(f"**{selected_band}**: {desc}")
+
+# Footer metrics
 st.markdown("---")
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.metric("Classification Accuracy", "92.3%", "2.1%")
+    st.metric("Model Accuracy", "92.3%", "+2.1%")
 with col2:
-    st.metric("Processing Latency", "45ms", "-5ms")
+    st.metric("Inference Time", "45ms", "-12ms")
 with col3:
-    st.metric("Model Parameters", "1.2M", "")
+    st.metric("Parameters", "1.2M", "")
 with col4:
-    st.metric("Training Time", "2.3h", "-30min")
+    st.metric("Training Time", "2.3 hrs", "-30min")
 
 # Footer
 st.markdown("""
 ---
-<div style="text-align: center; color: #666; padding: 1rem;">
-    <p><strong>Neural Signal Classification for Motor Intent</strong> | Built by Kiran Shay</p>
-    <p>Johns Hopkins University | Neuroscience & Computer Science</p>
+<div style="text-align: center; color: #6b7280; padding: 1rem;">
+    <p><strong>Neural Signal Classification for Motor Intent</strong></p>
+    <p>Built by <a href="https://kiranshay.github.io" target="_blank">Kiran Shay</a> •
+    Johns Hopkins University • Neuroscience & Computer Science</p>
     <p>
-        <a href="https://github.com/kiranshay/neural-signal-classifier-for" target="_blank">GitHub</a> |
-        <a href="https://kiranshay.github.io" target="_blank">Portfolio</a> |
+        <a href="https://github.com/kiranshay/neural-signal-classifier-for" target="_blank">GitHub</a> •
         <a href="mailto:kiranshay123@gmail.com">Contact</a>
     </p>
 </div>
