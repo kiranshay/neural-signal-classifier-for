@@ -225,11 +225,8 @@ class MotorIntentClassifier:
         return predicted, probs[predicted], probs
 
 
-@st.cache_resource
-def load_classifier():
-    return MotorIntentClassifier()
-
-classifier = load_classifier()
+# Initialize classifier (fresh instance each run to avoid cache issues)
+classifier = MotorIntentClassifier()
 
 # Sidebar
 st.sidebar.markdown("## ⚙️ Parameters")
@@ -255,13 +252,17 @@ show_channels = st.sidebar.multiselect(
 if not show_channels:
     show_channels = [8, 16, 24, 32]
 
+# Ensure show_channels is a list of valid integers
+show_channels = [int(ch) for ch in show_channels]
+
 # Generate signals
 signals, time_axis = classifier.generate_synthetic_ecog(duration, motor_intent)
-signals += np.random.randn(*signals.shape) * noise_level
+signals = signals + np.random.randn(*signals.shape) * noise_level
 
 # Classification
 predicted_class, confidence, probabilities = classifier.classify_intent(signals)
-band_power = classifier.extract_band_power(signals[show_channels])
+selected_signals = signals[show_channels, :]
+band_power = classifier.extract_band_power(selected_signals)
 
 # Main tabs
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Signal Analysis", "🎯 Classification", "🏗️ Architecture", "📖 Theory"])
