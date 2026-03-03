@@ -1,0 +1,60 @@
+Here's the HTML card for the Neural Signal Classification for Motor Intent project:
+
+```html
+<div class="card project-card" data-tags="deep-learning bci signal-processing pytorch machine-learning neuroscience">
+    <div class="card-header">
+        <div class="card-title-row">
+            <h3>Neural Signal Classification for Motor Intent</h3>
+            <span class="status status-planned">Planned</span>
+        </div>
+        <p class="card-description">
+            Deep learning pipeline to classify neural signals and predict motor intent from ECoG data for brain-computer interfaces. Uses Temporal Convolutional Networks and Transformers to decode complex temporal dynamics in neural time-series data.
+        </p>
+    </div>
+    
+    <div class="card-content">
+        <div class="tags-container">
+            <span class="tag tag-primary">Deep Learning</span>
+            <span class="tag tag-accent">BCI</span>
+            <span class="tag tag-secondary">Signal Processing</span>
+            <span class="tag tag-primary">PyTorch</span>
+            <span class="tag tag-secondary">Machine Learning</span>
+            <span class="tag tag-neutral">Neuroscience</span>
+        </div>
+        
+        <div class="card-links">
+            <a href="https://github.com/kiranshay/neural-signal-classifier" target="_blank" rel="noopener noreferrer" class="card-link">
+                <span data-lucide="github"></span>
+                Code
+            </a>
+            <a href="https://neuralsignalclassifi.streamlit.app" target="_blank" rel="noopener noreferrer" class="card-link">
+                <span data-lucide="external-link"></span>
+                Demo
+            </a>
+        </div>
+    </div>
+</div>
+```
+
+## Instructions:
+
+1. **Where to place**: Add this card to the `#projects-grid` section in your `index.html` file, preferably near the top since it's a featured deep learning project.
+
+2. **Filter updates**: You may need to add "neuroscience" to your filter buttons if it doesn't already exist. Add this button to your filters section:
+```html
+<button class="filter-btn" data-filter="neuroscience">Neuroscience</button>
+```
+
+3. **Git commands** to commit and push:
+```bash
+cd /Users/kiranshay/projects/kiranshay-website
+git add index.html
+git commit -m "Add Neural Signal Classification for Motor Intent project card"
+git push origin main
+```
+
+The card uses:
+- `status-planned` for the planned status
+- Mixed tag colors: primary for core tech (Deep Learning, PyTorch), accent for BCI, secondary for technical areas (Signal Processing, ML), and neutral for domain (Neuroscience)
+- Standard GitHub and demo links with appropriate Lucide icons
+- Data attributes for filtering functionality

@@ -1,0 +1,19 @@
+{
+  "name": "Neural Signal Classification for Motor Intent",
+  "description": "Deep learning pipeline to classify neural signals and predict motor intent from ECoG data for brain-computer interfaces.",
+  "problem_statement": "BCIs could restore motor function, but current decoding algorithms struggle with complex temporal dynamics.",
+  "technical_approach": "Temporal Convolutional Networks and Transformers for time-series neural data. Wavelet transforms for frequency decomposition.",
+  "data_sources": [
+    "BCI Competition IV Dataset 4",
+    "MOABB Library"
+  ],
+  "tags": [
+    "Deep Learning",
+    "BCI",
+    "Signal Processing",
+    "PyTorch"
+  ],
+  "status": "planned",
+  "github_url": "https://github.com/kiranshay/neural-signal-classifier-for",
+  "demo_url": "https://neuralsignalclassifi.streamlit.app"
+}
