@@ -754,7 +754,7 @@ class MotorIntentClassifier:
             fpr = np.sort(np.concatenate([[0], np.random.beta(0.5, 5, 50), [1]]))
             tpr = np.sort(np.concatenate([[0], np.random.beta(5 * auc_target, 5 * (1 - auc_target), 50), [1]]))
             tpr = np.clip(tpr, fpr, 1.0)
-            auc_val = np.trapz(tpr, fpr)
+            auc_val = np.sum(np.diff(fpr) * (tpr[:-1] + tpr[1:]) / 2)
             roc[cls] = {'fpr': fpr, 'tpr': tpr, 'auc': auc_val}
         return roc
 
