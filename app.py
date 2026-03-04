@@ -521,6 +521,24 @@ def _style_axis(ax):
         ax.spines[spine].set_color('#475569')
     ax.grid(True, alpha=0.15, color='#94a3b8')
 
+def fix_log_ticks(ax, axis='y'):
+    """Fix log scale tick labels to avoid mathtext parsing errors."""
+    from matplotlib.ticker import FuncFormatter
+    def fmt(x, _):
+        if x == 0:
+            return '0'
+        exp = np.log10(abs(x))
+        if abs(exp - round(exp)) < 0.01 and abs(exp) >= 2:
+            return f'1e{int(round(exp))}'
+        elif x >= 0.01:
+            return f'{x:.3g}'
+        else:
+            return f'{x:.1e}'
+    if axis == 'y':
+        ax.yaxis.set_major_formatter(FuncFormatter(fmt))
+    else:
+        ax.xaxis.set_major_formatter(FuncFormatter(fmt))
+
 
 # ==================== MotorIntentClassifier ====================
 class MotorIntentClassifier:
@@ -971,6 +989,7 @@ with tab1:
     ax.set_ylabel('Power (μV²/Hz)')
     ax.set_xlim(1, 80)
     ax.set_yscale('log')
+    fix_log_ticks(ax)
     ax.legend(loc='upper right', facecolor='#1e293b', edgecolor='#475569', labelcolor='#e2e8f0')
     plt.tight_layout()
     st.pyplot(fig)
@@ -1051,7 +1070,9 @@ with tab2:
         f_raw, psd_raw = signal.welch(stages['Raw'][ch_idx], classifier.fs, nperseg=256)
         fig, ax = plt.subplots(figsize=(6, 4))
         setup_dark_plot(fig, ax)
-        ax.semilogy(f_raw, psd_raw, color='#94a3b8', linewidth=1.5)
+        ax.plot(f_raw, psd_raw, color='#94a3b8', linewidth=1.5)
+        ax.set_yscale('log')
+        fix_log_ticks(ax)
         ax.set_title('Raw Signal Spectrum', fontsize=12, fontweight='bold')
         ax.set_xlabel('Frequency (Hz)')
         ax.set_ylabel('Power')
@@ -1064,7 +1085,9 @@ with tab2:
         f_clean, psd_clean = signal.welch(stages['Artifact Rejection'][ch_idx], classifier.fs, nperseg=256)
         fig, ax = plt.subplots(figsize=(6, 4))
         setup_dark_plot(fig, ax)
-        ax.semilogy(f_clean, psd_clean, color='#34d399', linewidth=1.5)
+        ax.plot(f_clean, psd_clean, color='#34d399', linewidth=1.5)
+        ax.set_yscale('log')
+        fix_log_ticks(ax)
         ax.set_title('Cleaned Signal Spectrum', fontsize=12, fontweight='bold')
         ax.set_xlabel('Frequency (Hz)')
         ax.set_ylabel('Power')
@@ -1169,6 +1192,7 @@ with tab4:
     axes[1].set_ylabel('Frequency (Hz)')
     axes[1].set_title('Wavelet Scalogram', fontsize=13, fontweight='bold')
     axes[1].set_yscale('log')
+    fix_log_ticks(axes[1])
     cbar = plt.colorbar(im, ax=axes[1], label='Power')
     cbar.ax.yaxis.label.set_color('#e2e8f0')
     cbar.ax.tick_params(colors='#94a3b8')
@@ -1236,6 +1260,7 @@ with tab5:
         ax.set_ylabel('Frequency (Hz)')
         ax.set_title(f'ERSP — Motor Channel {motor_ch}', fontsize=13, fontweight='bold')
         ax.set_yscale('log')
+        fix_log_ticks(ax)
         cbar = plt.colorbar(im, ax=ax, label='Power (dB)')
         cbar.ax.yaxis.label.set_color('#e2e8f0')
         cbar.ax.tick_params(colors='#94a3b8')
@@ -1259,6 +1284,7 @@ with tab5:
         ax.set_ylabel('Frequency (Hz)')
         ax.set_title(f'ERSP — Non-Motor Channel {non_motor}', fontsize=13, fontweight='bold')
         ax.set_yscale('log')
+        fix_log_ticks(ax)
         cbar = plt.colorbar(im, ax=ax, label='Power (dB)')
         cbar.ax.yaxis.label.set_color('#e2e8f0')
         cbar.ax.tick_params(colors='#94a3b8')
