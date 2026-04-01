@@ -21,7 +21,7 @@ st.set_page_config(
     page_title="BCI Motor Intent Classifier",
     page_icon="🧠",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # ==================== CSS Styling System ====================
@@ -426,6 +426,27 @@ st.markdown("""
 
     [data-testid="stSidebar"] .stSlider label { color: #cbd5e1 !important; }
 
+    /* Sidebar expander text fix */
+    [data-testid="stSidebar"] [data-testid="stExpander"] {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary,
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary span,
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary p {
+        color: #94a3b8 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] p,
+    [data-testid="stSidebar"] [data-testid="stExpander"] span,
+    [data-testid="stSidebar"] [data-testid="stExpander"] li,
+    [data-testid="stSidebar"] [data-testid="stExpander"] div {
+        color: #e2e8f0 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] strong {
+        color: #f8fafc !important;
+    }
+
     /* Architecture */
     .arch-container {
         background: linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
@@ -491,12 +512,34 @@ st.markdown("""
     .footer p strong { color: #f8fafc !important; }
     .footer a { color: #818cf8; text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
     .footer a:hover { text-decoration: underline; color: #a5b4fc; }
+
+    @media (max-width: 768px) {
+        .main .block-container { padding: 1rem; }
+        .main-header { font-size: 1.5rem; }
+        .subtitle { font-size: 0.9rem; margin-bottom: 1rem; }
+        .section-header { font-size: 1.2rem; }
+        .metric-container { padding: 0.75rem; margin-bottom: 0.5rem; }
+        .metric-container h3 { font-size: 1.1rem; }
+        .param-grid { grid-template-columns: 1fr; }
+        .stTabs [data-baseweb="tab-list"] { padding: 4px; gap: 2px; }
+        .stTabs [data-baseweb="tab"] { height: 36px; padding: 0 8px; font-size: 0.7rem; }
+        .def-item { flex-direction: column; gap: 0.25rem; }
+        .def-term { min-width: auto; }
+        .subsection-header { font-size: 1.1rem; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Header
 st.markdown('<h1 class="main-header">🧠 Neural Signal Classification for Motor Intent</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Brain-Computer Interface · Deep Learning · ECoG Signal Processing</p>', unsafe_allow_html=True)
+
+st.markdown("""
+<div class="highlight-box">
+<p>👈 <strong>Getting started:</strong> Open the sidebar (arrow at top-left)
+to configure parameters. Changes update visualizations in real time.</p>
+</div>
+""", unsafe_allow_html=True)
 
 
 # ==================== Plot Helper ====================
@@ -885,6 +928,13 @@ st.sidebar.markdown("### ⚡ Signal Parameters")
 duration = st.sidebar.slider("Duration (s)", 1.0, 4.0, 2.0, 0.5)
 noise_level = st.sidebar.slider("Noise Level", 0.0, 0.3, 0.1, 0.02)
 
+with st.sidebar.expander("ℹ️ What are these?"):
+    st.markdown("""
+- **Ground Truth Intent** — The motor action the simulated brain is "performing." The synthetic signal changes its frequency content to mimic that intent.
+- **Duration** — How many seconds of neural data to generate. Longer durations give more data for frequency analysis but take longer to compute.
+- **Noise Level** — Adds random noise on top of the signal. Higher values make classification harder, simulating real-world recording conditions.
+""")
+
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📡 Channel Selection")
 channel_preset = st.sidebar.selectbox("Preset", ["Motor Cortex", "Frontal", "Custom"])
@@ -899,10 +949,22 @@ if not show_channels:
     show_channels = [8, 16, 24, 32]
 show_channels = [int(ch) for ch in show_channels]
 
+with st.sidebar.expander("ℹ️ What are these?"):
+    st.markdown("""
+- **Preset** — Quick-select electrode groups. *Motor Cortex* picks channels over the hand/arm area; *Frontal* picks channels near the forehead.
+- **Channels** (Custom mode) — Choose individual electrodes from the 64-channel grid to plot and analyze.
+""")
+
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔬 Advanced")
 show_attention = st.sidebar.checkbox("Show Attention Weights", value=True)
 spectrogram_channel = st.sidebar.selectbox("Spectrogram Channel", show_channels)
+
+with st.sidebar.expander("ℹ️ What are these?"):
+    st.markdown("""
+- **Show Attention Weights** — Toggle the simulated attention-map visualization in the Attention tab. This shows which channels and time points a hypothetical transformer would focus on.
+- **Spectrogram Channel** — Which electrode's data to use for the time-frequency scalogram and ERSP plots.
+""")
 
 
 # ==================== Generate Signals ====================
@@ -946,7 +1008,7 @@ with tab1:
     col1, col2 = st.columns([2.5, 1])
 
     with col1:
-        fig, axes = plt.subplots(len(show_channels), 1, figsize=(12, 2 * len(show_channels)), sharex=True)
+        fig, axes = plt.subplots(len(show_channels), 1, figsize=(10, 2 * len(show_channels)), sharex=True)
         if len(show_channels) == 1:
             axes = [axes]
         colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c']
@@ -978,7 +1040,7 @@ with tab1:
     f, psd = classifier.compute_power_spectrum(signals[show_channels])
     mean_psd = np.mean(psd, axis=0)
 
-    fig, ax = plt.subplots(figsize=(12, 4))
+    fig, ax = plt.subplots(figsize=(10, 4))
     setup_dark_plot(fig, ax)
     ax.fill_between(f, mean_psd, alpha=0.3, color='#667eea')
     ax.plot(f, mean_psd, color='#667eea', linewidth=2)
@@ -1049,7 +1111,7 @@ with tab2:
 </div>
         """, unsafe_allow_html=True)
 
-        fig, ax = plt.subplots(figsize=(12, 2.5))
+        fig, ax = plt.subplots(figsize=(10, 2.5))
         setup_dark_plot(fig, ax)
         sig = stages[name][ch_idx]
         color = ['#94a3b8', '#f59e0b', '#667eea', '#10b981', '#34d399'][i]
@@ -1173,7 +1235,7 @@ with tab4:
 
     freqs, spectrogram = classifier.compute_wavelet_spectrogram(signals[spectrogram_channel])
 
-    fig, axes = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw={'height_ratios': [1, 2]})
+    fig, axes = plt.subplots(2, 1, figsize=(10, 8), gridspec_kw={'height_ratios': [1, 2]})
     setup_dark_plot(fig, np.array(axes))
 
     axes[0].plot(time_axis * 1000, signals[spectrogram_channel], color='#667eea', linewidth=1)
@@ -1302,7 +1364,7 @@ with tab5:
     gamma_ersp_mask = (ersp_freqs >= 30) & (ersp_freqs <= 100)
     alpha_ersp_mask = (ersp_freqs >= 8) & (ersp_freqs <= 12)
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 3.5))
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3.5))
     setup_dark_plot(fig, np.array(axes))
 
     for ax_i, (mask, name, color) in enumerate([
@@ -1546,7 +1608,7 @@ with tab7:
     st.markdown('<div class="subsection-header">🔄 Cross-Subject Transfer Learning</div>', unsafe_allow_html=True)
     subjects, within_acc, cross_acc, finetuned_acc = classifier.generate_cross_subject_data()
 
-    fig, ax = plt.subplots(figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(10, 5))
     setup_dark_plot(fig, ax)
     x = np.arange(len(subjects))
     width = 0.25
@@ -1577,9 +1639,12 @@ with tab8:
 
     models = classifier.generate_model_comparison_data()
 
-    # Model cards
-    cols = st.columns(4)
-    for i, (name, data) in enumerate(models.items()):
+    # Model cards — two rows of two for better mobile layout
+    model_items = list(models.items())
+    cols_row1 = st.columns(2)
+    cols_row2 = st.columns(2)
+    cols = cols_row1 + cols_row2
+    for i, (name, data) in enumerate(model_items):
         with cols[i]:
             badge_class = data['status']
             badge_text = {'best': 'BEST', 'good': 'STRONG', 'baseline': 'BASELINE'}[badge_class]
@@ -1600,7 +1665,7 @@ with tab8:
     # Grouped bar chart
     st.markdown('<div class="subsection-header">Performance Comparison</div>', unsafe_allow_html=True)
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(10, 5))
     setup_dark_plot(fig, np.array(axes))
 
     model_names = list(models.keys())
@@ -1729,7 +1794,7 @@ with tab9:
 
     # Learning rate schedule
     st.markdown('<div class="subsection-header">Learning Rate Schedule</div>', unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(12, 3))
+    fig, ax = plt.subplots(figsize=(10, 3))
     setup_dark_plot(fig, ax)
     ax.plot(epochs, lr * 1e4, color='#a5b4fc', linewidth=2)
     ax.fill_between(epochs, lr * 1e4, alpha=0.2, color='#a5b4fc')
@@ -1742,9 +1807,10 @@ with tab9:
 
     # Training config cards
     st.markdown('<div class="subsection-header">Training Configuration</div>', unsafe_allow_html=True)
-    col1, col2, col3, col4 = st.columns(4)
-    for col, val, label in [(col1, '100', 'Epochs'), (col2, '32', 'Batch Size'),
-                             (col3, '1.2M', 'Parameters'), (col4, '~2h', 'Training Time')]:
+    tc_row1_col1, tc_row1_col2 = st.columns(2)
+    tc_row2_col1, tc_row2_col2 = st.columns(2)
+    for col, val, label in [(tc_row1_col1, '100', 'Epochs'), (tc_row1_col2, '32', 'Batch Size'),
+                             (tc_row2_col1, '1.2M', 'Parameters'), (tc_row2_col2, '~2h', 'Training Time')]:
         with col:
             st.markdown(f'<div class="metric-container"><h3>{val}</h3><p>{label}</p></div>', unsafe_allow_html=True)
 
@@ -1836,7 +1902,7 @@ with tab11:
 
         with col1:
             st.markdown('<div class="subsection-header">Channel × Time Attention Heatmap</div>', unsafe_allow_html=True)
-            fig, ax = plt.subplots(figsize=(12, 6))
+            fig, ax = plt.subplots(figsize=(10, 6))
             setup_dark_plot(fig, ax)
             im = ax.imshow(attention, aspect='auto', cmap='viridis', extent=[0, duration * 1000, n_display_channels, 0])
             ax.set_xlabel('Time (ms)')
@@ -1872,7 +1938,7 @@ with tab11:
         temporal_attention = np.mean(attention, axis=0)
         time_points = np.linspace(0, duration * 1000, len(temporal_attention))
 
-        fig, ax = plt.subplots(figsize=(12, 4))
+        fig, ax = plt.subplots(figsize=(10, 4))
         setup_dark_plot(fig, ax)
         ax.plot(time_points, temporal_attention, color='#667eea', linewidth=2)
         ax.fill_between(time_points, temporal_attention, alpha=0.3, color='#667eea')
