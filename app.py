@@ -15,6 +15,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Circle, Ellipse, FancyArrowPatch
 import matplotlib.patches as mpatches
 import matplotlib.gridspec as gridspec
+import joblib
 
 # Page configuration
 st.set_page_config(
@@ -545,6 +546,84 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+# ==================== Trained Model Loading ====================
+@st.cache_resource
+def load_models():
+    model_data = joblib.load('models/bci_classifier.pkl')
+    eval_data = joblib.load('models/eval_metrics.pkl')
+    return model_data, eval_data
+
+_model_data, _eval_data = load_models()
+
+
+def extract_features_for_inference(data, fs=512):
+    """Extract frequency-domain features from multichannel ECoG for model inference.
+
+    Must match the feature extraction used during training (train_model.py).
+    Expects data shape: (n_channels, n_samples) with exactly 8 channels.
+    """
+    features = []
+    bands = {'delta': (1, 4), 'theta': (4, 8), 'alpha': (8, 13), 'beta': (13, 30), 'gamma': (30, 80)}
+
+    for ch in range(data.shape[0]):
+        freqs, psd = signal.welch(data[ch], fs=fs, nperseg=256)
+
+        # Band powers
+        for band_name, (low, high) in bands.items():
+            mask = (freqs >= low) & (freqs <= high)
+            features.append(np.log1p(np.mean(psd[mask])))
+
+        # Band power ratios
+        beta_mask = (freqs >= 13) & (freqs <= 30)
+        gamma_mask = (freqs >= 30) & (freqs <= 80)
+        alpha_mask = (freqs >= 8) & (freqs <= 13)
+        beta_power = np.mean(psd[beta_mask])
+        gamma_power = np.mean(psd[gamma_mask])
+        alpha_power = np.mean(psd[alpha_mask])
+        features.append(gamma_power / (beta_power + 1e-10))
+        features.append(beta_power / (alpha_power + 1e-10))
+
+        # Hjorth parameters
+        diff1 = np.diff(data[ch])
+        diff2 = np.diff(diff1)
+        activity = np.var(data[ch])
+        mobility = np.sqrt(np.var(diff1) / (activity + 1e-10))
+        complexity = np.sqrt(np.var(diff2) / (np.var(diff1) + 1e-10)) / (mobility + 1e-10)
+        features.extend([np.log1p(activity), mobility, complexity])
+
+    # Inter-hemisphere features (left vs right asymmetry)
+    for band_idx, band_name in enumerate(bands):
+        left_power = np.mean([features[ch * 10 + band_idx] for ch in range(4)])
+        right_power = np.mean([features[ch * 10 + band_idx] for ch in range(4, 8)])
+        features.append(left_power - right_power)
+
+    return np.array(features)
+
+
+def classify_with_trained_model(signal_data, fs=512):
+    """Run real sklearn inference on 8-channel signal data.
+
+    Args:
+        signal_data: numpy array of shape (n_channels, n_samples), must have >= 8 channels.
+        fs: sampling rate of the signal.
+
+    Returns:
+        predicted_class (str), confidence (float), probabilities (dict)
+    """
+    # Use the first 8 channels (matching training data configuration)
+    data_8ch = signal_data[:8]
+    feats = extract_features_for_inference(data_8ch, fs=fs)
+    feats_scaled = _model_data['scaler'].transform(feats.reshape(1, -1))
+    proba = _model_data['model'].predict_proba(feats_scaled)[0]
+    le = _model_data['label_encoder']
+    class_names = [le.inverse_transform([i])[0] for i in range(len(le.classes_))]
+    probabilities = {name: float(p) for name, p in zip(class_names, proba)}
+    predicted_class = max(probabilities, key=probabilities.get)
+    confidence = probabilities[predicted_class]
+    return predicted_class, confidence, probabilities
+
+
 # Header
 st.markdown('<h1 class="main-header">🧠 Neural Signal Classification for Motor Intent</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Brain-Computer Interface · Deep Learning · ECoG Signal Processing</p>', unsafe_allow_html=True)
@@ -985,7 +1064,7 @@ with st.sidebar.expander("ℹ️ What are these?"):
 # ==================== Generate Signals ====================
 signals, time_axis = classifier.generate_synthetic_ecog(duration, motor_intent)
 signals = signals + np.random.randn(*signals.shape) * noise_level
-predicted_class, confidence, probabilities = classifier.classify_intent(signals)
+predicted_class, confidence, probabilities = classify_with_trained_model(signals, fs=classifier.fs)
 band_power = classifier.extract_band_power(signals[show_channels])
 
 
@@ -1573,18 +1652,20 @@ with tab7:
 
     with col2:
         st.markdown('<div class="subsection-header">Confusion Matrix</div>', unsafe_allow_html=True)
-        cm = classifier.generate_confusion_matrix()
-        class_names = ['Rest', 'Left', 'Right', 'Both']
+        cm = _eval_data['confusion_matrix']
+        class_names = _eval_data['class_names']
 
         fig, ax = plt.subplots(figsize=(8, 6))
         setup_dark_plot(fig, ax)
+        n_classes = len(class_names)
         im = ax.imshow(cm, cmap='Blues', alpha=0.8)
-        for i in range(4):
-            for j in range(4):
-                txt_color = 'white' if cm[i, j] > 50 else '#e2e8f0'
+        cm_thresh = cm.max() / 2
+        for i in range(n_classes):
+            for j in range(n_classes):
+                txt_color = 'white' if cm[i, j] > cm_thresh else '#e2e8f0'
                 ax.text(j, i, str(cm[i, j]), ha='center', va='center', fontsize=14, fontweight='bold', color=txt_color)
-        ax.set_xticks(range(4))
-        ax.set_yticks(range(4))
+        ax.set_xticks(range(n_classes))
+        ax.set_yticks(range(n_classes))
         ax.set_xticklabels(class_names, color='#e2e8f0')
         ax.set_yticklabels(class_names, color='#e2e8f0')
         ax.set_xlabel('Predicted')
@@ -1602,14 +1683,15 @@ with tab7:
 
     # ROC Curves
     st.markdown('<div class="subsection-header">ROC Curves (One-vs-Rest)</div>', unsafe_allow_html=True)
-    roc_data = classifier.generate_roc_data()
+    roc_data = _eval_data['roc_data']
     roc_colors = {'Rest': '#6b7280', 'Left Hand': '#3b82f6', 'Right Hand': '#8b5cf6', 'Both Hands': '#10b981'}
 
     fig, ax = plt.subplots(figsize=(8, 6))
     setup_dark_plot(fig, ax)
     for cls, data in roc_data.items():
-        ax.plot(data['fpr'], data['tpr'], color=roc_colors[cls], linewidth=2,
-                label=f"{cls} (AUC={data['auc']:.3f})")
+        cls_str = str(cls)
+        ax.plot(data['fpr'], data['tpr'], color=roc_colors.get(cls_str, '#667eea'), linewidth=2,
+                label=f"{cls_str} (AUC={data['auc']:.3f})")
     ax.plot([0, 1], [0, 1], 'w--', alpha=0.3, linewidth=1)
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
@@ -1652,110 +1734,79 @@ with tab8:
 </div>
     """, unsafe_allow_html=True)
 
-    models = classifier.generate_model_comparison_data()
+    cv_scores = _eval_data['cv_scores']
+    cls_report = _eval_data.get('classification_report', {})
 
-    # Model cards — two rows of two for better mobile layout
-    model_items = list(models.items())
-    cols_row1 = st.columns(2)
-    cols_row2 = st.columns(2)
-    cols = cols_row1 + cols_row2
-    for i, (name, data) in enumerate(model_items):
-        with cols[i]:
-            badge_class = data['status']
-            badge_text = {'best': 'BEST', 'good': 'STRONG', 'baseline': 'BASELINE'}[badge_class]
+    # Model cards from real cross-validation results
+    model_items = list(cv_scores.items())
+    n_model_cards = len(model_items)
+    cols_row1 = st.columns(min(n_model_cards, 3))
+    for i, (name, scores) in enumerate(model_items):
+        with cols_row1[i % len(cols_row1)]:
+            acc = scores['mean']
+            std = scores['std']
+            is_best = (acc == max(s['mean'] for s in cv_scores.values()))
+            badge_class = 'best' if is_best else 'good'
+            badge_text = 'BEST' if is_best else 'STRONG'
             st.markdown(f"""
-<div class="model-card {'best' if badge_class == 'best' else ''}">
+<div class="model-card {'best' if is_best else ''}">
     <span class="status-badge {badge_class}">{badge_text}</span>
     <h4>{name}</h4>
-    <p class="model-metric"><strong>{data['accuracy']:.1%}</strong> Accuracy</p>
-    <p class="model-metric"><strong>{data['f1']:.3f}</strong> F1 Score</p>
-    <p class="model-metric"><strong>{data['inference_ms']}ms</strong> Inference</p>
-    <p class="model-metric"><strong>{data['params']}</strong> Parameters</p>
-    <p class="model-metric"><strong>{data['train_hrs']}h</strong> Training</p>
+    <p class="model-metric"><strong>{acc:.1%}</strong> CV Accuracy</p>
+    <p class="model-metric"><strong>+/- {std:.4f}</strong> Std Dev</p>
 </div>
             """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Grouped bar chart
-    st.markdown('<div class="subsection-header">Performance Comparison</div>', unsafe_allow_html=True)
+    # Bar chart of CV accuracy
+    st.markdown('<div class="subsection-header">Cross-Validation Accuracy Comparison</div>', unsafe_allow_html=True)
 
-    fig, axes = plt.subplots(1, 3, figsize=(10, 5))
-    setup_dark_plot(fig, np.array(axes))
+    fig, ax = plt.subplots(figsize=(10, 5))
+    setup_dark_plot(fig, ax)
 
-    model_names = list(models.keys())
-    model_colors = ['#94a3b8', '#3b82f6', '#f59e0b', '#10b981']
+    model_names = list(cv_scores.keys())
+    model_colors = ['#3b82f6', '#f59e0b', '#10b981'][:len(model_names)]
     x_pos = np.arange(len(model_names))
+    accs = [cv_scores[m]['mean'] for m in model_names]
+    stds = [cv_scores[m]['std'] for m in model_names]
 
-    # Accuracy
-    accs = [models[m]['accuracy'] for m in model_names]
-    axes[0].bar(x_pos, accs, color=model_colors, alpha=0.85)
-    axes[0].set_title('Accuracy', fontsize=12, fontweight='bold')
-    axes[0].set_xticks(x_pos)
-    axes[0].set_xticklabels(model_names, rotation=30, ha='right', fontsize=8)
-    axes[0].set_ylim(0.7, 1.0)
-    for j, v in enumerate(accs):
-        axes[0].text(j, v + 0.005, f'{v:.1%}', ha='center', fontsize=9, color='#e2e8f0')
-
-    # F1
-    f1s = [models[m]['f1'] for m in model_names]
-    axes[1].bar(x_pos, f1s, color=model_colors, alpha=0.85)
-    axes[1].set_title('F1 Score', fontsize=12, fontweight='bold')
-    axes[1].set_xticks(x_pos)
-    axes[1].set_xticklabels(model_names, rotation=30, ha='right', fontsize=8)
-    axes[1].set_ylim(0.7, 1.0)
-    for j, v in enumerate(f1s):
-        axes[1].text(j, v + 0.005, f'{v:.3f}', ha='center', fontsize=9, color='#e2e8f0')
-
-    # Inference time
-    times = [models[m]['inference_ms'] for m in model_names]
-    axes[2].bar(x_pos, times, color=model_colors, alpha=0.85)
-    axes[2].set_title('Inference (ms)', fontsize=12, fontweight='bold')
-    axes[2].set_xticks(x_pos)
-    axes[2].set_xticklabels(model_names, rotation=30, ha='right', fontsize=8)
-    for j, v in enumerate(times):
-        axes[2].text(j, v + 0.5, f'{v}ms', ha='center', fontsize=9, color='#e2e8f0')
+    bars = ax.bar(x_pos, accs, color=model_colors, alpha=0.85, yerr=stds, capsize=5,
+                  error_kw={'color': '#e2e8f0', 'linewidth': 1.5})
+    ax.set_title('5-Fold Cross-Validation Accuracy', fontsize=14, fontweight='bold')
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(model_names, color='#e2e8f0', fontsize=10)
+    ax.set_ylim(min(accs) - 0.05, 1.02)
+    ax.set_ylabel('Accuracy')
+    for j, (v, s) in enumerate(zip(accs, stds)):
+        ax.text(j, v + s + 0.005, f'{v:.3f}', ha='center', fontsize=11, color='#e2e8f0', fontweight='bold')
 
     plt.tight_layout()
     st.pyplot(fig)
     plt.close()
 
-    # Radar chart
-    st.markdown('<div class="subsection-header">Multi-Metric Radar Chart</div>', unsafe_allow_html=True)
-
-    fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
-    fig.patch.set_facecolor('#0f172a')
-    ax.set_facecolor('#1e293b')
-
-    metrics = ['Accuracy', 'F1 Score', 'Speed', 'Efficiency', 'Generalization']
-    n_metrics = len(metrics)
-    angles = np.linspace(0, 2 * np.pi, n_metrics, endpoint=False).tolist()
-    angles += angles[:1]
-
-    for name, color in zip(model_names, model_colors):
-        d = models[name]
-        speed_norm = 1.0 - d['inference_ms'] / 50.0
-        eff_norm = 1.0 - float(d['params'].replace('M', '')) / 1.5
-        gen_norm = d['accuracy'] * 0.95
-        values = [d['accuracy'], d['f1'], speed_norm, eff_norm, gen_norm]
-        values += values[:1]
-        ax.plot(angles, values, 'o-', linewidth=2, label=name, color=color)
-        ax.fill(angles, values, alpha=0.1, color=color)
-
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(metrics, color='#e2e8f0', fontsize=10)
-    ax.set_ylim(0, 1)
-    ax.tick_params(colors='#94a3b8')
-    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), facecolor='#1e293b', edgecolor='#475569', labelcolor='#e2e8f0')
-    ax.set_title('Multi-Dimensional Comparison', fontsize=13, fontweight='bold', color='#f1f5f9', pad=20)
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close()
+    # Per-class metrics from classification report
+    if cls_report:
+        st.markdown('<div class="subsection-header">Per-Class Test Metrics (Calibrated Random Forest)</div>', unsafe_allow_html=True)
+        metric_cols = st.columns(4)
+        class_colors = {'Rest': '#6b7280', 'Left Hand': '#3b82f6', 'Right Hand': '#8b5cf6', 'Both Hands': '#10b981'}
+        for i, cls_name in enumerate([c for c in cls_report if c not in ('accuracy', 'macro avg', 'weighted avg')]):
+            with metric_cols[i % 4]:
+                m = cls_report[cls_name]
+                color = class_colors.get(cls_name, '#667eea')
+                st.markdown(f"""
+<div class="metric-container" style="border-left: 3px solid {color};">
+    <h3>{cls_name}</h3>
+    <p>Precision: <strong>{m['precision']:.3f}</strong></p>
+    <p>Recall: <strong>{m['recall']:.3f}</strong></p>
+    <p>F1: <strong>{m['f1-score']:.3f}</strong></p>
+</div>
+                """, unsafe_allow_html=True)
 
     st.markdown("""
 <div class="key-point">
     <div class="key-point-icon">🏆</div>
-    <p><strong>TCN+Transformer</strong> achieves the best accuracy (94.2%) by combining temporal convolutions for local feature extraction with self-attention for long-range dependencies. The TCN alone offers the best speed-accuracy tradeoff for real-time applications.</p>
+    <p><strong>Real trained models:</strong> All metrics above come from actual sklearn classifiers trained on synthetic ECoG data with physiologically plausible class differences (beta desynchronization, gamma modulation, hemispheric lateralization).</p>
 </div>
     """, unsafe_allow_html=True)
 
