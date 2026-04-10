@@ -1,7 +1,7 @@
 """
 Neural Signal Classification for Motor Intent - Interactive Demo
 ================================================================
-Brain-Computer Interface | Deep Learning | Signal Processing
+Brain-Computer Interface | Machine Learning | Signal Processing
 """
 
 import streamlit as st
@@ -626,7 +626,7 @@ def classify_with_trained_model(signal_data, fs=512):
 
 # Header
 st.markdown('<h1 class="main-header">🧠 Neural Signal Classification for Motor Intent</h1>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Brain-Computer Interface · Deep Learning · ECoG Signal Processing</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Brain-Computer Interface · Machine Learning · ECoG Signal Processing</p>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="highlight-box">
@@ -1056,7 +1056,7 @@ spectrogram_channel = st.sidebar.selectbox("Spectrogram Channel", show_channels)
 
 with st.sidebar.expander("ℹ️ What are these?"):
     st.markdown("""
-- **Show Attention Weights** — Toggle the simulated attention-map visualization in the Attention tab. This shows which channels and time points a hypothetical transformer would focus on.
+- **Show Attention Weights** — Toggle the simulated attention-map visualization in the Attention tab. This shows a heuristic visualization of which channels and time points carry the most discriminative power.
 - **Spectrogram Channel** — Which electrode's data to use for the time-frequency scalogram and ERSP plots.
 """)
 
@@ -1730,7 +1730,7 @@ with tab8:
 
     st.markdown("""
 <div class="highlight-box">
-<p>📊 <strong>Architecture Comparison:</strong> Side-by-side evaluation of different deep learning architectures for ECoG-based motor intent classification.</p>
+<p>📊 <strong>Model Comparison:</strong> Side-by-side evaluation of different sklearn classifiers for ECoG-based motor intent classification, using cross-validated accuracy on extracted frequency-domain features.</p>
 </div>
     """, unsafe_allow_html=True)
 
@@ -1817,7 +1817,7 @@ with tab9:
 
     st.markdown("""
 <div class="highlight-box">
-<p>📉 <strong>Training Dynamics:</strong> Visualize how the TCN+Transformer model learns over 100 epochs. The gap between train and validation curves indicates generalization performance.</p>
+<p>📉 <strong>Training Simulation:</strong> Illustrative training curves showing typical loss/accuracy dynamics over epochs. The actual sklearn models use cross-validation rather than epoch-based training.</p>
 </div>
     """, unsafe_allow_html=True)
 
@@ -1955,7 +1955,7 @@ with tab11:
 
     st.markdown("""
 <div class="highlight-box">
-<p>🔍 <strong>Model Interpretability:</strong> The transformer's attention mechanism reveals which time points and channels the model focuses on, providing insights for clinical validation.</p>
+<p>🔍 <strong>Model Interpretability:</strong> Feature importance from the Random Forest reveals which frequency bands and channels drive classification, providing insights for clinical validation.</p>
 </div>
     """, unsafe_allow_html=True)
 
@@ -2037,36 +2037,36 @@ with tab12:
     st.markdown('<p class="section-header">Architecture & Theoretical Background</p>', unsafe_allow_html=True)
 
     # Architecture diagram
-    st.markdown('<div class="subsection-header">🏗️ Neural Network Architecture</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subsection-header">🏗️ Signal Processing + Machine Learning Pipeline</div>', unsafe_allow_html=True)
 
     st.markdown("""<div class="arch-container">
 <div style="text-align: center; margin-bottom: 1.5rem;">
-<span style="color: #94a3b8; font-size: 0.9rem;">TCN + Transformer Architecture for Motor Intent Classification</span>
+<span style="color: #94a3b8; font-size: 0.9rem;">Signal Processing + Random Forest Pipeline for Motor Intent Classification</span>
 </div>
 <div class="arch-flow">
 <div class="arch-block" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white;">
-<div class="arch-label">Input</div>
-<div class="arch-sublabel">64 ch × T samples</div>
+<div class="arch-label">Raw ECoG</div>
+<div class="arch-sublabel">8 ch × T samples</div>
 </div>
 <div class="arch-arrow">→</div>
 <div class="arch-block" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white;">
-<div class="arch-label">TCN Encoder</div>
-<div class="arch-sublabel">Temporal Conv</div>
+<div class="arch-label">Preprocessing</div>
+<div class="arch-sublabel">Notch 60Hz, Bandpass, CAR</div>
 </div>
 <div class="arch-arrow">→</div>
 <div class="arch-block" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
-<div class="arch-label">Wavelet</div>
-<div class="arch-sublabel">Multi-scale Decomp</div>
+<div class="arch-label">Feature Extraction</div>
+<div class="arch-sublabel">Band Powers, Hjorth, Laterality</div>
 </div>
 <div class="arch-arrow">→</div>
 <div class="arch-block" style="background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white;">
-<div class="arch-label">Attention</div>
-<div class="arch-sublabel">8-Head Self-Attn</div>
+<div class="arch-label">Random Forest</div>
+<div class="arch-sublabel">Calibrated Classifier</div>
 </div>
 <div class="arch-arrow">→</div>
 <div class="arch-block" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white;">
-<div class="arch-label">Output</div>
-<div class="arch-sublabel">4 Motor Classes</div>
+<div class="arch-label">Motor Intent</div>
+<div class="arch-sublabel">4 Classes</div>
 </div>
 </div>
 <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 2rem; flex-wrap: wrap;">
@@ -2083,26 +2083,40 @@ with tab12:
 </div>
 </div>""", unsafe_allow_html=True)
 
-    # Architecture parameters
+    # Feature extraction details
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
 <div class="param-grid">
-    <div class="param-card"><h6>Kernel Size</h6><p>3</p></div>
-    <div class="param-card"><h6>Dilation Rates</h6><p>1, 2, 4, 8</p></div>
-    <div class="param-card"><h6>Hidden Channels</h6><p>32 → 64 → 128</p></div>
-    <div class="param-card"><h6>Dropout</h6><p>0.2</p></div>
+    <div class="param-card"><h6>Band Powers</h6><p>5 bands × 8 channels = 40 features</p></div>
+    <div class="param-card"><h6>Band Ratios</h6><p>β/α, γ/β per channel</p></div>
+    <div class="param-card"><h6>Hjorth Parameters</h6><p>Activity, Mobility, Complexity per ch</p></div>
+    <div class="param-card"><h6>Laterality Indices</h6><p>L-R asymmetry per band</p></div>
 </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown("""
 <div class="param-grid">
-    <div class="param-card"><h6>Hidden Dim</h6><p>256</p></div>
-    <div class="param-card"><h6>Attention Heads</h6><p>8</p></div>
-    <div class="param-card"><h6>Encoder Layers</h6><p>4</p></div>
-    <div class="param-card"><h6>Learning Rate</h6><p>1e-4</p></div>
+    <div class="param-card"><h6>Classifier</h6><p>Random Forest (sklearn)</p></div>
+    <div class="param-card"><h6>Calibration</h6><p>CalibratedClassifierCV</p></div>
+    <div class="param-card"><h6>Validation</h6><p>Stratified 5-Fold CV</p></div>
+    <div class="param-card"><h6>Preprocessing</h6><p>Notch 60Hz + 1-100Hz Bandpass + CAR</p></div>
 </div>
         """, unsafe_allow_html=True)
+
+    # Show real cross-validation scores
+    cv_scores = _eval_data.get('cv_scores', {})
+    if cv_scores:
+        st.markdown("""
+<div class="key-point">
+    <div class="key-point-icon">📊</div>
+    <p><strong>Real cross-validation results</strong> from the trained sklearn models loaded at startup:</p>
+</div>
+        """, unsafe_allow_html=True)
+        cv_cols = st.columns(len(cv_scores))
+        for i, (name, scores) in enumerate(cv_scores.items()):
+            with cv_cols[i]:
+                st.metric(name, f"{scores['mean']:.1%}", f"± {scores['std']:.4f}")
 
     # Theory sections
     st.markdown('<div class="subsection-header">🧠 Motor Cortex & Neural Signals</div>', unsafe_allow_html=True)
@@ -2146,47 +2160,54 @@ with tab12:
 </div>
         """, unsafe_allow_html=True)
 
-    st.markdown('<div class="subsection-header">🔧 Deep Learning Methods</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subsection-header">🔧 Feature Engineering Methods</div>', unsafe_allow_html=True)
 
-    with st.expander("**Temporal Convolutional Networks (TCNs)**", expanded=True):
-        st.markdown("TCNs address key challenges in temporal modeling:")
+    with st.expander("**Why Frequency-Domain Features?**", expanded=True):
+        st.markdown("""
+Beta desynchronization (ERD) is a well-established biomarker of motor planning,
+first characterized by Pfurtscheller & Lopes da Silva (1999). When the motor cortex
+prepares a movement, beta-band (13-30 Hz) power decreases over the contralateral
+hemisphere. This is the core physiological signal our classifier exploits.
+""")
         st.markdown("""
 <div class="algo-step">
     <div class="step-num">1</div>
-    <div class="step-content"><strong>Causal Convolutions:</strong> Output at time t depends only on inputs at times ≤ t, preserving temporal causality for real-time BCI</div>
+    <div class="step-content"><strong>Band Power Extraction:</strong> Welch's method estimates power spectral density in 5 canonical bands (delta, theta, alpha, beta, gamma) across all 8 channels, yielding 40 primary features</div>
 </div>
 <div class="algo-step">
     <div class="step-num">2</div>
-    <div class="step-content"><strong>Dilated Convolutions:</strong> Exponentially increasing dilation rates (1, 2, 4, 8...) capture long-range dependencies</div>
+    <div class="step-content"><strong>Hjorth Parameters:</strong> Activity (signal variance), Mobility (mean frequency), and Complexity (bandwidth) capture time-domain dynamics without requiring frequency decomposition</div>
 </div>
 <div class="algo-step">
     <div class="step-num">3</div>
-    <div class="step-content"><strong>Residual Connections:</strong> Skip connections enable gradient flow and identity mapping</div>
+    <div class="step-content"><strong>Hemispheric Laterality:</strong> Left-right asymmetry indices per band capture contralateral dominance patterns that distinguish left vs. right hand movements</div>
 </div>
         """, unsafe_allow_html=True)
-        st.latex(r"\text{Receptive Field} = 1 + \sum_{i=0}^{L-1} (k-1) \cdot d_i")
+        st.latex(r"\text{Laterality Index} = \frac{P_{\text{left}} - P_{\text{right}}}{P_{\text{left}} + P_{\text{right}}}")
 
-    with st.expander("**Self-Attention Mechanism**", expanded=True):
-        st.latex(r"\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V")
+    with st.expander("**Random Forest Classifier**", expanded=True):
         st.markdown("""
 <div class="concept-card">
-    <h5>📊 Multi-Head Attention</h5>
-    <p>Multiple attention heads learn different aspects of the signal:</p>
+    <h5>📊 Why Random Forest?</h5>
+    <p>Random Forests are well-suited for BCI feature classification:</p>
     <ul>
-        <li><strong>Heads 1-2:</strong> Beta band dynamics</li>
-        <li><strong>Heads 3-4:</strong> Gamma burst patterns</li>
-        <li><strong>Heads 5-6:</strong> Cross-channel relationships</li>
-        <li><strong>Heads 7-8:</strong> Movement phase tracking</li>
+        <li><strong>Handles correlated features:</strong> Band powers across channels are naturally correlated; RF handles this without regularization tuning</li>
+        <li><strong>Feature importance:</strong> Built-in importance scores reveal which bands and channels drive classification, aiding interpretability</li>
+        <li><strong>Calibration:</strong> Wrapped in CalibratedClassifierCV for well-calibrated probability estimates (important for BCI confidence thresholds)</li>
+        <li><strong>Robustness:</strong> Ensemble averaging reduces variance from noisy neural signals</li>
     </ul>
 </div>
         """, unsafe_allow_html=True)
 
-    with st.expander("**Wavelet Transform**", expanded=True):
-        st.latex(r"W_\psi(s, \tau) = \frac{1}{\sqrt{|s|}} \int_{-\infty}^{\infty} x(t) \psi^*\left(\frac{t-\tau}{s}\right) dt")
+    with st.expander("**Production BCI Systems**"):
         st.markdown("""
 <div class="key-point">
     <div class="key-point-icon">💡</div>
-    <p><strong>Why Wavelets?</strong> Unlike FFT, wavelets preserve temporal locality — we know <em>when</em> frequency content changes, not just <em>what</em> frequencies are present. Critical for transient motor events.</p>
+    <p><strong>Scaling up:</strong> Production BCIs (e.g., BrainGate, Neuralink) often use CNNs or Transformers
+    on raw time-series data to learn features end-to-end. However, the frequency-domain approach used here
+    captures the same underlying physiological phenomena (beta ERD, gamma ERS, hemispheric laterality)
+    and is more interpretable — you can directly inspect which frequency bands and channels matter most.
+    For a demo, interpretability is a feature, not a limitation.</p>
 </div>
         """, unsafe_allow_html=True)
 
@@ -2226,8 +2247,8 @@ with tab12:
 |-------|------------------|
 | **Schalk et al. (2007)** | ECoG-based BCI for motor control |
 | **Miller et al. (2010)** | High-gamma activity in motor cortex |
-| **Bai et al. (2011)** | TCN for time series classification |
-| **Vaswani et al. (2017)** | Transformer architecture (Attention Is All You Need) |
+| **Pfurtscheller & Lopes da Silva (1999)** | Beta ERD as motor planning biomarker |
+| **Hjorth (1970)** | Time-domain signal descriptors (Activity, Mobility, Complexity) |
 | **Schirrmeister et al. (2017)** | Deep learning for EEG decoding |
 | **Canolty & Knight (2010)** | Phase-amplitude coupling in cortical circuits |
 | **Makeig (1993)** | Event-related spectral perturbation |
@@ -2256,6 +2277,6 @@ st.markdown("""
         <a href="https://kiranshay.github.io" target="_blank">Portfolio</a> ·
         <a href="mailto:kiranshay123@gmail.com">Contact</a>
     </p>
-    <p style="font-size: 0.85rem; color: #94a3b8;">Brain-Computer Interfaces · Deep Learning · Johns Hopkins University</p>
+    <p style="font-size: 0.85rem; color: #94a3b8;">Brain-Computer Interfaces · Machine Learning · Johns Hopkins University</p>
 </div>
 """, unsafe_allow_html=True)
